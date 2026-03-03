@@ -1,28 +1,16 @@
 const musicModel = require("../model/music.model")
 const jwt = require("jsonwebtoken")
 const uploadFile = require("../services/storage.service")
+const albumModel = require("../model/album.model")
 
 const createMusic = async(req,res)=>{
 
     try {
-        const token = req.cookies.token
-
-        if(!token){
-            return res.status(403).json({message : "unauthorized user"})
-        }
-
-
-        const decoded = jwt.verify(token,process.env.JWT_SECRET)
-        // if token is not verified it will automatically go to catch error
-
-        const role = decoded.role
-        
-        if(role !== "artist"){
-            return res.status(403).json({message : "You are not authorized to create music"})
-        }
 
         const {title} = req.body
         const file = req.file
+
+        const decoded = req.user
 
         const result = await uploadFile(file.buffer.toString("base64"))
 
@@ -48,4 +36,71 @@ const createMusic = async(req,res)=>{
     }
 }
 
-module.exports = {createMusic}
+const createAlbum = async(req,res)=>{
+    try {
+        
+
+        const {title,musicIds} = req.body
+        const decoded = req.user
+        const album = albumModel.create({
+            title,
+            artist : decoded.id,
+            music : musicIds
+        })
+
+        res.status(201).json({
+            message : "album created successfully",
+            album
+        })
+        
+
+    } catch (error) {
+        console.log(error.message)
+        res.status(400).json({message : error.message})
+    }
+}
+
+const getAllMusics = async(req,res)=>{
+    try {
+
+        const music = await musicModel.find().limit(10)
+        return res.status(200).json({
+            message : "all musics fetched successfully",
+            music
+        })
+    } catch (error) {
+        console.log(error.message)
+        res.status(400).json({message : error.message})
+    }
+}
+
+const getAllAlbums = async(req,res)=>{
+   try {
+     const albums = await albumModel.find().select("title artist")
+
+     res.status(200).json({
+        message:"all albums fetched successfully",
+        albums
+     })
+   } catch (error) {
+    console.log(error.message)
+        res.status(400).json({message : error.message})
+   }
+}
+
+const getAllAlbumById = async(req,res)=>{
+
+    try {
+        const id = req.params.id
+        const album = await albumModel.findById(id)
+        res.status(200).json({
+            message : "album fetched successfully",
+            album
+        })
+    } catch (error) {
+        console.log(error.message)
+        res.status(400).json({message : error.message})
+    }
+}
+
+module.exports = {createMusic,createAlbum,getAllMusics,getAllAlbums,getAllAlbumById}
