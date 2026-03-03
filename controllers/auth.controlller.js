@@ -49,4 +49,49 @@ const register = async(req,res)=>{
     }
 }
 
-module.exports = {register}
+const loginUser = async(req,res)=>{
+    try {
+        const {userName,email,password} = req.body
+        console.log(req.body)
+
+        const User = await userModel.findOne({
+            $or:[
+                {userName},
+                {email}
+            ]
+        })
+        
+        if(!User){
+            return res.status(404).json({message : "no user exists with this email"})
+        }
+
+        const validPass = await bcrypt.compare(password,User.password)
+
+        if(!validPass){
+            return res.status(401).json({message:"incorrect password"})
+        }
+
+        const token = jwt.sign({
+            id : User._id,
+            role : User.role
+        },process.env.JWT_SECRET)
+
+        res.cookie("token",token)
+
+        return res.status(200).json({
+            message : "Login successful",
+            User : {
+                id : User._id,
+                role : User.role,
+                email : User.email,
+                userName : User.userName
+            }
+        })
+
+    } catch (error) {
+        console.log(error.message)
+        res.status(400).json({message : error.message})
+    }
+}
+
+module.exports = {register,loginUser}
